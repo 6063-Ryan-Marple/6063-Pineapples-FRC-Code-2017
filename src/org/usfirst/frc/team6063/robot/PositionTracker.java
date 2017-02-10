@@ -40,10 +40,21 @@ public class PositionTracker {
 	}
 
 	/**
-	 * Resets position tracker.
+	 * Resets position of robot to [0, 0, 0]
 	 */
 	public void resetPosition() {
 		position = new double[3];
+	}
+	
+	/**
+	 * Sets current robot position to X, Y and angle defined
+	 * 
+	 * @param x position of robot in meters
+	 * @param y position of robot in meters
+	 * @param angle Angle of robot in radians
+	 */
+	public void setPosition(double x, double y, double angle) {
+		position = new double[] {x, y, angle};
 	}
 	
 	/**
@@ -62,7 +73,7 @@ public class PositionTracker {
 		
 		dLinearPos = (dPos[0] + dPos[1]) / 2;
 		
-		position[2] += gyro.getAngle();
+		position[2] += Math.toRadians(gyro.getAngle());
 		position[0] += dLinearPos * Math.cos(position[2]);
 		position[1] += dLinearPos * Math.sin(position[2]);
 	}
@@ -78,18 +89,27 @@ public class PositionTracker {
 		}
 	};
 
+
 	/**
-	 * Getter methods
+	 * Get X position of robot relative to field in metres
+	 * @return double X
 	 */
-	
 	public double getXPos() {
 		return this.position[0];
 	}
 	
+	/**
+	 * Get Y position of robot relative to field in metres
+	 * @return double X
+	 */	
 	public double getYPos() {
 		return this.position[1];
 	}
 	
+	/**
+	 * Get angle position of robot relative to field in radians
+	 * @return double angle
+	 */
 	public double getAngle() {
 		return this.position[2];
 	}

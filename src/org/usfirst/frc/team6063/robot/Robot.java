@@ -41,7 +41,7 @@ public class Robot extends IterativeRobot {
 		jeff = new Jeff();
 
 		joy1 = new Joystick(0);
-
+		
 		// Define event bus and register events
 		eventBus = new EventBus();
 		eventBus.registerEvent(new JoystickEvent(joy1));

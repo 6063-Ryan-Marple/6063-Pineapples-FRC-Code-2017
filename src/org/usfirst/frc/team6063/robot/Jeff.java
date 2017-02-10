@@ -7,9 +7,24 @@ import edu.wpi.first.wpilibj.VictorSP;
 
 public class Jeff {
 
+	private final double MAX_NET_SPEED = 0.2; //Max motor speed for net
+	private final double ANGLE_FACTOR = 1;
+	
+	/**
+	 * 
+	 *  Modes available for secondary joystick
+	 * 
+	 * @author GLCPineapples
+	 */
+	public static enum SecondaryJoystickMode {
+		MODE_WINCH,
+		MODE_NET
+	}
+	
 	private PWM actuatorBucket; // Actuator for gear bucket
 
 	/* Position-tracking objects */
+	private ADXRS450_Gyro gyro;
 	private PositionTracker posTracker;
 	private PIDVictorSP mLeftDrive, mRightDrive;
 	private VictorSP mNet;
@@ -18,17 +33,6 @@ public class Jeff {
 	private double[] targetPosition = new double[3];
 	
 	private boolean isBusy = false;
-	
-	/* Accelerometer/gyro vars */
-	ADXRS450_Gyro gyro;
-	double Kp = 0.03; // Proportion coefficient
-	int desiredHeading = 0;
-	int currAngle; // Current facing angle
-	
-	public static enum SecondaryJoystickMode {
-			MODE_WINCH,
-			MODE_NET
-	}
 	
 	SecondaryJoystickMode secondaryJoyMode = SecondaryJoystickMode.MODE_NET;
 	
@@ -63,6 +67,10 @@ public class Jeff {
 		secondaryJoyMode = mode;
 	}
 	
+	public void setNetMotorSpeed(double speed) {
+		mNet.set(speed * MAX_NET_SPEED);
+	}
+	
 	public boolean isBusy() {
 		return isBusy;
 	}
@@ -75,8 +83,6 @@ public class Jeff {
 	
 	/**
 	 * 
-	 * Blah blah blah
-	 * 
 	 * @param a value to be checked
 	 * @param b value to check against
 	 * @param span range that a must be within b
@@ -86,14 +92,23 @@ public class Jeff {
 		return a > (b - span) && a < (b + span);
 	}
 	
+	/**
+	 * @return X value that Jeff is traveling to
+	 */
 	public double getTargetX() {
 		return targetPosition[0];
 	}
 	
+	/**
+	 * @return Y value that Jeff is traveling to
+	 */
 	public double getTargetY() {
 		return targetPosition[1];
 	}
 	
+	/**
+	 * @return Angle that Jeff is moving to
+	 */
 	public double getTargetAngle() {
 		return targetPosition[2];
 	}
@@ -119,7 +134,7 @@ public class Jeff {
 		//Find distance from robot to target position
 		double distX = getTargetX() - posTracker.getXPos();
 		double distY = getTargetY() - posTracker.getYPos();
-		double heading = posTracker.getAngle();
+		double heading = posTracker.getAngle() % (2 * Math.PI);
 		
 		//Transform distance to position relative to robot
 		double xPosRel = distX * Math.cos(heading) + distY * Math.sin(heading);
@@ -127,8 +142,13 @@ public class Jeff {
 		
 		double angleRel = Math.atan(xPosRel / yPosRel);
 		
-		double leftSpeed = angleRel;
-		double rightSpeed = - angleRel;
+		//Find shortest angle to target
+		double shortestAngle = (angleRel < Math.PI) ? angleRel : (angleRel - 2 * Math.PI);
+		
+		//Run at max speed. Robot will turn at fully speed
+		//if (shortestAngle * ANGLE_FACTOR) > 1
+		double leftSpeed = 1 + shortestAngle * ANGLE_FACTOR;
+		double rightSpeed = 1 - shortestAngle * ANGLE_FACTOR;
 		
 		double scale = Math.max(leftSpeed, rightSpeed);
 		
@@ -139,13 +159,6 @@ public class Jeff {
 		
 		mLeftDrive.setSpeed(leftSpeed);
 		mRightDrive.setSpeed(rightSpeed);
-		
-		//double newAngle = angle * Kp * angleScaleFactor;
-		/* Definition: robot.arcadeDrive(moveValue, rotateValue) */
-	
-		// towards
-																// heading 0
-		// currAngle += -angle * Kp;
 	}
 	
 	//Thread that drives the robot
