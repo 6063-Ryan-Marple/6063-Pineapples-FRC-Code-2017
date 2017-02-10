@@ -2,7 +2,6 @@ package org.usfirst.frc.team6063.robot;
 
 import edu.wpi.first.wpilibj.ADXRS450_Gyro;
 import edu.wpi.first.wpilibj.Encoder;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 public class PositionTracker {
 	
@@ -11,7 +10,6 @@ public class PositionTracker {
 	
 	public double[] position = new double[3];
 	public double[] lastEncPos = new double[2];	
-	
 	
 	// Distance between wheels divided by 2
 	double rotationRadius;
@@ -64,14 +62,9 @@ public class PositionTracker {
 		
 		dLinearPos = (dPos[0] + dPos[1]) / 2;
 		
-		position[2] += ((dPos[1] - dPos[0]) / 2) / rotationRadius;
+		position[2] += gyro.getAngle();
 		position[0] += dLinearPos * Math.cos(position[2]);
 		position[1] += dLinearPos * Math.sin(position[2]);
-		
-		/* Update UI */
-		SmartDashboard.putNumber("X", position[0]);
-		SmartDashboard.putNumber("Y", position[1]);
-		SmartDashboard.putNumber("Angle", position[2]);
 	}
 	
 	private Thread positionThread = new Thread() {
@@ -80,7 +73,6 @@ public class PositionTracker {
 			while (!Thread.interrupted()) {
 				long delay = System.nanoTime() + (long) 5e7;
 				updatePosition();
-				SmartDashboard.putNumber("Gyro", (int) gyro.getAngle());
 				while(System.nanoTime() < delay);
 			}
 		}
