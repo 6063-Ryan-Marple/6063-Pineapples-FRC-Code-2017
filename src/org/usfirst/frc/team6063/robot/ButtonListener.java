@@ -16,7 +16,6 @@ public class ButtonListener {
 	@EventHandler
 	public void onJoystickEvent(JoystickEvent e) {
 		switch (e.getButtonID()) {
-			/* Button 1: switch gear-collection bucket actuators */
 			case 1:
 				jeff.setSecondaryJoystickMode(SecondaryJoystickMode.MODE_NET);
 				break;

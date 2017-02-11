@@ -6,9 +6,10 @@ import edu.wpi.first.wpilibj.PWM;
 import edu.wpi.first.wpilibj.VictorSP;
 
 public class Jeff {
-
-	private final double MAX_NET_SPEED = 0.2; //Max motor speed for net
-	private final double ANGLE_FACTOR = 1;
+	
+	private static final double ANGLE_FACTOR = 1;
+	private static final int BUCKET_ON_RAW_VAL = 1000;
+	private static final int BUCKET_OFF_RAW_VAL = 500;
 	
 	/**
 	 * 
@@ -29,6 +30,8 @@ public class Jeff {
 	private PIDVictorSP mLeftDrive, mRightDrive;
 	private VictorSP mNet;
 	private Encoder encLeft, encRight; // Encoders
+	
+	private double maxNetSpeed = 0.2; //Max motor speed for net
 	
 	private double[] targetPosition = new double[3];
 	
@@ -67,8 +70,39 @@ public class Jeff {
 		secondaryJoyMode = mode;
 	}
 	
+	/**
+	 * Sets the speed of the motor which controls the ball net
+	 * <p>
+	 * <ul><i>setNetMotorSpeed(<b>double</b> speed)</i></ul>
+	 * <p>
+	 * The input should be between 0 and 1 which is then
+	 * scaled by the maximumNetSpeed which can be changed
+	 * by <i>setNetMotorSpeed</i>
+	 * 
+	 * @param speed of the net between 0 and 1
+	 * <p>
+	 * @see <i>setMaxNetSpeed(<b>double</b> speed)</i>
+	 */
 	public void setNetMotorSpeed(double speed) {
-		mNet.set(speed * MAX_NET_SPEED);
+		//Make sure speed dow not exceed 1 or -1
+		speed = Math.max(Math.min(speed, 1), -1);
+		mNet.set(speed * maxNetSpeed);
+	}
+	
+	/**
+	 * Set maximum that net motor can travel at.
+	 * <p>
+	 * <ul><i>setMaxNetSpeed(<b>double</b> speed)</i></ul>
+	 * <p>
+	 * When net motor speed is set, the input value
+	 * is scaled by the max net speed set here
+	 * 
+	 * @param speed max net motor speed (between 0 and 1)
+	 * <p>
+	 * @see <i>setNetMotorSpeed(<b>double</b> speed)</i>
+	 */
+	public void setMaxNetSpeed(double speed) {
+		maxNetSpeed = speed;
 	}
 	
 	public boolean isBusy() {
@@ -150,7 +184,7 @@ public class Jeff {
 		double leftSpeed = 1 + shortestAngle * ANGLE_FACTOR;
 		double rightSpeed = 1 - shortestAngle * ANGLE_FACTOR;
 		
-		double scale = Math.max(leftSpeed, rightSpeed);
+		double scale = Math.abs(Math.max(Math.abs(leftSpeed), Math.abs(rightSpeed)));
 		
 		if (scale > 1) {
 			leftSpeed = leftSpeed / scale;
@@ -159,6 +193,33 @@ public class Jeff {
 		
 		mLeftDrive.setSpeed(leftSpeed);
 		mRightDrive.setSpeed(rightSpeed);
+	}
+	
+	/**
+	 * Sets speeds of drive base.
+	 * <p>
+	 * If speed is >1, speeds will be scaled
+	 * down by largest value
+	 * <br>
+	 * <b>ie.</b> <i>left = 2, right = 1</i>
+	 * would be scaled to: <i>left = 1, right = 0.5</i>
+	 * 
+	 * @param left motor value
+	 * @param right motor value
+	 * @param usePID
+	 */
+	public void setMotorSpeeds(double left, double right, boolean usePID) {
+		double scale = Math.max(left, right);
+		
+		if (scale > 1) {
+			left = left / scale;
+			right = right / scale;
+		}
+		
+		mLeftDrive.setSpeed(left);
+		mLeftDrive.setUsePID(usePID);
+		mRightDrive.setSpeed(right);
+		mRightDrive.setUsePID(usePID);
 	}
 	
 	//Thread that drives the robot
@@ -177,12 +238,10 @@ public class Jeff {
 		}
 	};
 	
-	/*************************************************************************
+	/*
 	 * Gear collecting bucket code
 	 */
 	private boolean bucketFlag = false;
-	private static final int BUCKET_ON_RAW_VAL = 1000;
-	private static final int BUCKET_OFF_RAW_VAL = 500;
 
 	/**
 	 * Enable/disable actuator to tilt bucket

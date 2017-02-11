@@ -1,22 +1,11 @@
 package org.usfirst.frc.team6063.robot;
-/* TODO:
- * 1. Winch/lift code
- * 2. Autonomous gear deposit
- * 3. Fix net-motor code (fuel collecting motor
- */
 
 import org.usfirst.frc.team6063.robot.Events.EventBus;
 import org.usfirst.frc.team6063.robot.Events.JoystickEvent;
 
-import edu.wpi.first.wpilibj.ADXRS450_Gyro;
-import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.Joystick;
-import edu.wpi.first.wpilibj.PWM;
-import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj.VictorSP;
 import edu.wpi.first.wpilibj.livewindow.LiveWindow;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -79,24 +68,18 @@ public class Robot extends IterativeRobot {
 
 	@Override
 	public void teleopPeriodic() {
+		//Determine desired motor speeds
 		double throttle = 0.3 + (0.7 * -(joy1.getThrottle() - 1) / 2);
 		double leftSpeed = throttle * (joy1.getX() / 2 - joy1.getY());
 		double rightSpeed = throttle * (-joy1.getY() - joy1.getX() / 2);
+		
+		jeff.setMotorSpeeds(leftSpeed, rightSpeed, true);
+		
 	}
-
-	/*************************************************************************
-	 * Test mode code
-	 */
-	private int testStage = 0; // Test stage is implemented as a state machine?
-	private static final double twoPi = 2 * Math.PI;
 
 	@Override
 	public void testInit() {
-		LiveWindow.setEnabled(false);
-		
-		SmartDashboard.putNumber("SpeedTarget", 0);
-		
-		// this.timer = new Timer();
+		LiveWindow.setEnabled(false); //Disable LiveWindow, it's annoying
 	}
 
 	//Variable to define which mode is currently active for testing.
@@ -105,7 +88,6 @@ public class Robot extends IterativeRobot {
 	
 	@Override
 	public void testPeriodic() {
-		double speed = SmartDashboard.getNumber("SpeedTarget", 0);
 
 		switch (testMode) {
 		case 0:
