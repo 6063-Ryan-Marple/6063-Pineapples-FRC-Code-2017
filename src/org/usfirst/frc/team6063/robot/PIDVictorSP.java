@@ -3,6 +3,13 @@ package org.usfirst.frc.team6063.robot;
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.VictorSP;
 
+/*
+ * TODO: Add code to determine if encoders are working
+ * 
+ * If encoders aren't working, wheels will be put to full power potentially
+ * damaging the robot
+ */
+
 public class PIDVictorSP {
 	
 	VictorSP[] motors;

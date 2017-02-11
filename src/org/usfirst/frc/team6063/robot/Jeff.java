@@ -5,6 +5,14 @@ import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.PWM;
 import edu.wpi.first.wpilibj.VictorSP;
 
+/*
+ * TODO: Add code to determine if encoders are working
+ * 
+ * Maybe create a function in PIDVictorSP. Have a contingency
+ * to potentially attempt to load the gear without encoder feedback.
+ * Driving in a straight line shouldn't be too difficult.
+ */
+
 public class Jeff {
 
 	private static final double ANGLE_FACTOR = 2;
