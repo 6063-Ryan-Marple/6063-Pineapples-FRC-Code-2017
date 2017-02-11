@@ -2,7 +2,6 @@ package org.usfirst.frc.team6063.robot;
 
 import edu.wpi.first.wpilibj.ADXRS450_Gyro;
 import edu.wpi.first.wpilibj.Encoder;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 public class PositionTracker {
 	
@@ -11,7 +10,6 @@ public class PositionTracker {
 	
 	public double[] position = new double[3];
 	public double[] lastEncPos = new double[2];	
-	
 	
 	// Distance between wheels divided by 2
 	double rotationRadius;
@@ -42,10 +40,21 @@ public class PositionTracker {
 	}
 
 	/**
-	 * Resets position tracker.
+	 * Resets position of robot to [0, 0, 0]
 	 */
 	public void resetPosition() {
 		position = new double[3];
+	}
+	
+	/**
+	 * Sets current robot position to X, Y and angle defined
+	 * 
+	 * @param x position of robot in meters
+	 * @param y position of robot in meters
+	 * @param angle Angle of robot in radians
+	 */
+	public void setPosition(double x, double y, double angle) {
+		position = new double[] {x, y, angle};
 	}
 	
 	/**
@@ -64,14 +73,9 @@ public class PositionTracker {
 		
 		dLinearPos = (dPos[0] + dPos[1]) / 2;
 		
-		position[2] += ((dPos[1] - dPos[0]) / 2) / rotationRadius;
+		position[2] += Math.toRadians(gyro.getAngle());
 		position[0] += dLinearPos * Math.cos(position[2]);
 		position[1] += dLinearPos * Math.sin(position[2]);
-		
-		/* Update UI */
-		SmartDashboard.putNumber("X", position[0]);
-		SmartDashboard.putNumber("Y", position[1]);
-		SmartDashboard.putNumber("Angle", position[2]);
 	}
 	
 	private Thread positionThread = new Thread() {
@@ -80,24 +84,32 @@ public class PositionTracker {
 			while (!Thread.interrupted()) {
 				long delay = System.nanoTime() + (long) 5e7;
 				updatePosition();
-				SmartDashboard.putNumber("Gyro", (int) gyro.getAngle());
 				while(System.nanoTime() < delay);
 			}
 		}
 	};
 
+
 	/**
-	 * Getter methods
+	 * Get X position of robot relative to field in metres
+	 * @return double X
 	 */
-	
 	public double getXPos() {
 		return this.position[0];
 	}
 	
+	/**
+	 * Get Y position of robot relative to field in metres
+	 * @return double X
+	 */	
 	public double getYPos() {
 		return this.position[1];
 	}
 	
+	/**
+	 * Get angle position of robot relative to field in radians
+	 * @return double angle
+	 */
 	public double getAngle() {
 		return this.position[2];
 	}
