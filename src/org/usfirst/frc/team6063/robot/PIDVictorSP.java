@@ -2,12 +2,13 @@ package org.usfirst.frc.team6063.robot;
 
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.VictorSP;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 public class PIDVictorSP {
 	
 	VictorSP[] motors;
+	
 	double targetPower;
+	double targetAngularVel;
 	double currentAngularVel;
 	double lastAngularVel;
 	double lastEncoderValue;
@@ -16,6 +17,7 @@ public class PIDVictorSP {
 	
 	Encoder enc;
 
+	//Set default values for variables
 	private final double MAX_ANGULAR_VEL = 5; //In revolutions per second
 	private double kP = 1.2;
 	private double kI = 0.02;
@@ -25,82 +27,119 @@ public class PIDVictorSP {
 	
 	int cpr;
 	
-	public PIDVictorSP(VictorSP[] motor, Encoder encoder, int cyclesPerRevolution) {
-		
-		SmartDashboard.putNumber("KP", kP);
-		SmartDashboard.putNumber("KI", kI);
-		SmartDashboard.putNumber("KD", kD);
-		SmartDashboard.putNumber("IDF", iDF);
-		
-		motors = motor;
-		
-		enc = encoder;
-		
-		cpr = cyclesPerRevolution;
+	public PIDVictorSP(VictorSP[] motors, Encoder encoder, int cyclesPerRevolution) {		
+		this.motors = motors;
+		this.enc = encoder;
+		this.cpr = cyclesPerRevolution;
 		
 		tPIDLoop.start();
 	}
 	
-	long lastTime;
-	double dT;
+	/**
+	 * Set values for tuning of PID
+	 * <p>
+	 * <ul><i>setPIDConstants(<b>double</b> kP, <b>double</b> kI, <b>double</b> kD, <b>double</b> iDF)</i></ul>
+	 * <p>
+	 * Higher values for constants will cause each 
+	 * corresponding value to have a higher effect
+	 * on the power sent to the motors.
+	 * 
+	 * @param kP Constant for effect of error
+	 * @param kI Constant of integral
+	 * @param kD Constant for effect of derivative
+	 * @param iDF Integral dampening factor (0 to 1)
+	 */
+	public void setPIDConstants(double kP, double kI, double kD, double iDF) {
+		this.kP = kP;
+		this.kI = kI;
+		this.kD = kD;
+		this.iDF = Math.min(iDF, 1);
+	}
+	
+	
+	
+	/*
+	 * updateWheelSpeeds() is run repetitively on short intervals to get a
+	 * specific value for the wheel speeds
+	 */
 	double integral, lastError;
-	private void updateWheelSpeeds () {
+	private void updateWheelSpeeds (double dT) {
 		double newPower;
 		
 		if (usePID) {
-			double targetAngularVel = targetPower * MAX_ANGULAR_VEL;
 			
-			kP = SmartDashboard.getNumber("KP", kP);
-			kI = SmartDashboard.getNumber("KI", kI);
-			kD = SmartDashboard.getNumber("KD", kD);
-			iDF = SmartDashboard.getNumber("IDF", iDF);
-			
-			//Calculate change in time
-			dT = (System.nanoTime() - lastTime) / 1e9;
-			lastTime = System.nanoTime();
-			
-			//Calculate velocity
+			//Calculate desired velocity by adding or subtracting acceleration constant
 			if (targetAngularVel < currentAngularVel)
-				currentAngularVel = Math.max(currentAngularVel - acceleration, targetAngularVel);
+				currentAngularVel = Math.max(currentAngularVel - acceleration * dT, targetAngularVel);
 			else
-				currentAngularVel = Math.min(currentAngularVel + acceleration, targetAngularVel);
+				currentAngularVel = Math.min(currentAngularVel + acceleration * dT, targetAngularVel);
 			
+			//Calculate angular velocity by dividing change in rotation by deltaT
 			double angularVel = ((enc.get() - lastEncoderValue) / cpr) / dT;
 			lastEncoderValue = enc.get();
 			
+			//Calculate error, derivative and integral values
 			double error = currentAngularVel - angularVel;
 			double derivative = error - lastError;
 			integral = (iDF * integral) + error * dT;
+			
+			//Calculate power estimated to achieve desired velocity
 			newPower = motors[0].get() + error * kP * dT + integral * kI + derivative * kD * dT;
 			
 		} else {
+			//If not using PID loop, simply set power to target power
 			newPower = targetPower;
 		}
 		
+		//Change motor powers to determined power
 		for (int i = 0; i < motors.length; i++) {
 			motors[i].set(newPower);
 		}
 		
 	}
 	
+	/**
+	 * Set whether PID should be used
+	 * @param usePID
+	 */
 	public void setUsePID (boolean usePID) {
 		this.usePID = usePID;
 	}
 	
+	/**
+	 * Set target speed
+	 * <p>
+	 * <ul><i>setSpeed(<b>double</b> speed)</i></ul>
+	 * 
+	 * @param speed
+	 */
 	public void setSpeed(double speed) {
+		targetAngularVel = targetPower * MAX_ANGULAR_VEL;
 		targetPower = speed;
 	}
 	
 	private Thread tPIDLoop = new Thread() {
 		@Override 
 		public void run() {
-			lastTime = System.nanoTime();
+			//Optimize speed by defining variables once
+			long lastTime = System.nanoTime();
+			double dT;
+			long delay;
 			lastEncoderValue = enc.get();
 			
 			while(!Thread.interrupted()) {
-				long delay = System.nanoTime() + (long) 5e7;
-				updateWheelSpeeds();
+				
+				//Calculate change in time
+				dT = (System.nanoTime() - lastTime) / 1e9;
+				lastTime = System.nanoTime();
+				delay = System.nanoTime() + (long) 5e7;
+				
+				//Run updateWheelSpeeds loop
+				updateWheelSpeeds(dT);
+				
+				//Ensure delay has passed until running again
 				while(System.nanoTime() < delay);
+				
 			}
 		}
 	};

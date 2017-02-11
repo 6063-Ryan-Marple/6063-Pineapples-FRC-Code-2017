@@ -45,12 +45,30 @@ public class Robot extends IterativeRobot {
 
 	@Override
 	public void autonomousInit() {
+		/*
+		 * Test autonomous mode should drive to {1, 1} at PI rotation and then back to
+		 * {0, 0} at 0 rotation
+		 */
+		jeff.startSelfDrive();
 		
+		jeff.drivetoPosition(1, 1, Math.PI);
+		
+		while(jeff.isBusy() && isAutonomous());
+		
+		jeff.drivetoPosition(0, 0, 0);
+		
+		while(jeff.isBusy() && isAutonomous());
 	}
 
 	@Override
 	public void autonomousPeriodic() {
 
+	}
+	
+	@Override
+	public void disabledInit() {
+		jeff.stopSelfDrive();
+		jeff.setMotorSpeeds(0, 0, false);
 	}
 
 	/*************************************************************************
@@ -59,7 +77,8 @@ public class Robot extends IterativeRobot {
 
 	@Override
 	public void teleopInit() {
-		
+		jeff.stopSelfDrive();
+		jeff.setMotorSpeeds(0, 0, false);
 	}
 
 	/**

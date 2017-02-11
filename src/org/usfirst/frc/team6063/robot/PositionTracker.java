@@ -44,6 +44,7 @@ public class PositionTracker {
 	 */
 	public void resetPosition() {
 		position = new double[3];
+		gyro.reset();
 	}
 	
 	/**
