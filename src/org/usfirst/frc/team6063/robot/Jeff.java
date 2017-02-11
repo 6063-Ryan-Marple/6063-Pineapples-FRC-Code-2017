@@ -20,6 +20,7 @@ public class Jeff {
 	private static final int BUCKET_OFF_RAW_VAL = 500;
 	private static final double TURNING_CONSTANT = 1;
 	private static final double MAX_SPEED = 0.2;
+	private static final long GOOD_POSITION_WAIT_TIME = (long) 1e8; //Time to wait once position has been reached
 
 	/**
 	 * 
@@ -181,15 +182,18 @@ public class Jeff {
 		return a <= Math.PI ? a : 2 * Math.PI - a;
 	}
 
+	long checkGoodDelay = 0;
+	boolean posIsGood = false;
+	
 	private void updateDrive() {
-		
-		double heading = posTracker.getAngle();
-		double leftSpeed, rightSpeed;
 		
 		// See if robot needs to be doing something
 		// isBusy will be set true when a drive command is run
 		if (!isBusy)
 			return;
+		
+		double heading = posTracker.getAngle();
+		double leftSpeed, rightSpeed;
 
 		// Check to see if robot is where it is supposed to be.
 		if (inRange(posTracker.getXPos(), getTargetX(), 0.05)
@@ -197,7 +201,12 @@ public class Jeff {
 
 			//Check if angle is correct. If so end, if not turn on the spot.
 			if (Math.abs(smallestAngle(getTargetAngle() - heading)) > 0.02) {
-				isBusy = false;
+				if (!posIsGood) {
+					checkGoodDelay = System.nanoTime() + GOOD_POSITION_WAIT_TIME;
+					posIsGood = true;
+				} else if (System.nanoTime() > checkGoodDelay) {
+					isBusy = false;
+				}
 				return;
 			}
 			
@@ -233,6 +242,7 @@ public class Jeff {
 			rightSpeed = MAX_SPEED * (rightSpeed / scale);
 		}
 		
+		posIsGood = false;
 		setMotorSpeeds(leftSpeed, rightSpeed, true);
 	}
 
