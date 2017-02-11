@@ -11,6 +11,7 @@ public class Jeff {
 	private static final int BUCKET_ON_RAW_VAL = 1000;
 	private static final int BUCKET_OFF_RAW_VAL = 500;
 	private static final double TURNING_CONSTANT = 1;
+	private static final double MAX_SPEED = 0.2;
 
 	/**
 	 * 
@@ -220,8 +221,8 @@ public class Jeff {
 
 		//Scale down speeds if largest speed > 1
 		if (scale > 1) {
-			leftSpeed = leftSpeed / scale;
-			rightSpeed = rightSpeed / scale;
+			leftSpeed = MAX_SPEED * (leftSpeed / scale);
+			rightSpeed = MAX_SPEED * (rightSpeed / scale);
 		}
 		
 		setMotorSpeeds(leftSpeed, rightSpeed, true);

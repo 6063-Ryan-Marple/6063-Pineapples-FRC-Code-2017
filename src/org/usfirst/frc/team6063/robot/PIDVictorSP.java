@@ -9,7 +9,6 @@ public class PIDVictorSP {
 	
 	double targetPower;
 	double targetAngularVel;
-	double currentAngularVel;
 	double lastAngularVel;
 	double lastEncoderValue;
 	
@@ -23,7 +22,6 @@ public class PIDVictorSP {
 	private double kI = 0.02;
 	private double kD = 2.5;
 	double iDF = 0.95; //Integral dampening factor
-	private final double acceleration = 0.5;
 	
 	int cpr;
 	
@@ -67,19 +65,12 @@ public class PIDVictorSP {
 		double newPower;
 		
 		if (usePID) {
-			
-			//Calculate desired velocity by adding or subtracting acceleration constant
-			if (targetAngularVel < currentAngularVel)
-				currentAngularVel = Math.max(currentAngularVel - acceleration * dT, targetAngularVel);
-			else
-				currentAngularVel = Math.min(currentAngularVel + acceleration * dT, targetAngularVel);
-			
 			//Calculate angular velocity by dividing change in rotation by deltaT
 			double angularVel = ((enc.get() - lastEncoderValue) / cpr) / dT;
 			lastEncoderValue = enc.get();
 			
 			//Calculate error, derivative and integral values
-			double error = currentAngularVel - angularVel;
+			double error = targetAngularVel - angularVel;
 			double derivative = error - lastError;
 			integral = (iDF * integral) + error * dT;
 			
