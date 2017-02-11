@@ -21,7 +21,9 @@ public class PIDVictorSP {
 	private double kP = 1.2;
 	private double kI = 0.02;
 	private double kD = 2.5;
-	double iDF = 0.95; //Integral dampening factor
+	
+	//Integral dampening factor. Higher means integral lasts for less time.
+	double iDF = 2;
 	
 	int cpr;
 	
@@ -72,10 +74,10 @@ public class PIDVictorSP {
 			//Calculate error, derivative and integral values
 			double error = targetAngularVel - angularVel;
 			double derivative = error - lastError;
-			integral = (iDF * integral) + error * dT;
+			integral = (1 - iDF * dT) * integral + error * dT;
 			
 			//Calculate power estimated to achieve desired velocity
-			newPower = motors[0].get() + error * kP * dT + integral * kI + derivative * kD * dT;
+			newPower = motors[0].get() + dT * (error * kP + integral * kI + derivative * kD);
 			
 		} else {
 			//If not using PID loop, simply set power to target power
@@ -123,7 +125,7 @@ public class PIDVictorSP {
 				//Calculate change in time
 				dT = (System.nanoTime() - lastTime) / 1e9;
 				lastTime = System.nanoTime();
-				delay = System.nanoTime() + (long) 5e7;
+				delay = System.nanoTime() + (long) 5e6;
 				
 				//Run updateWheelSpeeds loop
 				updateWheelSpeeds(dT);
