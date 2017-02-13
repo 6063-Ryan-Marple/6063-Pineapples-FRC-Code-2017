@@ -84,7 +84,7 @@ public class PIDVictorSP {
 			integral = (1 - iDF * dT) * integral + error * dT;
 			
 			//Calculate power estimated to achieve desired velocity
-			newPower = motors[0].get() + dT * (error * kP + integral * kI + derivative * kD);
+			newPower = error * kP + integral * kI + derivative * kD;
 			
 		} else {
 			//If not using PID loop, simply set power to target power

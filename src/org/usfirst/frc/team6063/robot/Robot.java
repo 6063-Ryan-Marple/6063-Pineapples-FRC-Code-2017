@@ -6,6 +6,7 @@ import org.usfirst.frc.team6063.robot.Events.JoystickEvent;
 import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.livewindow.LiveWindow;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -92,13 +93,18 @@ public class Robot extends IterativeRobot {
 		double leftSpeed = throttle * (joy1.getX() / 2 - joy1.getY());
 		double rightSpeed = throttle * (-joy1.getY() - joy1.getX() / 2);
 		
-		jeff.setMotorSpeeds(leftSpeed, rightSpeed, true);
+		jeff.setMotorSpeeds(leftSpeed, rightSpeed, false);
 		
 	}
 
 	@Override
 	public void testInit() {
 		LiveWindow.setEnabled(false); //Disable LiveWindow, it's annoying
+		SmartDashboard.putNumber("kP", 1);
+		SmartDashboard.putNumber("kI", 0);
+		SmartDashboard.putNumber("kD", 0);
+		SmartDashboard.putNumber("iDF", 0);
+		SmartDashboard.putNumber("TargetSpeed", 0);
 	}
 
 	//Variable to define which mode is currently active for testing.
@@ -110,6 +116,14 @@ public class Robot extends IterativeRobot {
 
 		switch (testMode) {
 		case 0:
+			double kP = SmartDashboard.getNumber("kP", 0);
+			double kI = SmartDashboard.getNumber("kI", 0);
+			double kD = SmartDashboard.getNumber("kD", 0);
+			double iDF = SmartDashboard.getNumber("iDF", 1);
+			jeff.setDrivePIDValues(kP, kI, kD, iDF);
+			
+			double speed = SmartDashboard.getNumber("TargetSpeed", 0);
+			jeff.setMotorSpeeds(speed, -speed, true);
 			break;
 
 		case 1:

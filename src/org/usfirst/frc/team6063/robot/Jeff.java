@@ -179,7 +179,8 @@ public class Jeff {
 	
 	//Smallest angle to a
 	private double smallestAngle(double a) {
-		return a <= Math.PI ? a : 2 * Math.PI - a;
+		a = a % (2 * Math.PI);
+		return (a <= Math.PI) ? a : (2 * Math.PI - a);
 	}
 
 	long checkGoodDelay = 0;
@@ -271,6 +272,11 @@ public class Jeff {
 		mLeftDrive.setUsePID(usePID);
 		mRightDrive.setSpeed(right);
 		mRightDrive.setUsePID(usePID);
+	}
+	
+	public void setDrivePIDValues(double kP, double kI, double kD, double iDF) {
+		mLeftDrive.setPIDConstants(kP, kI, kD, iDF);
+		mRightDrive.setPIDConstants(kP, kI, kD, iDF);
 	}
 
 	private boolean selfDriveActive = false;
