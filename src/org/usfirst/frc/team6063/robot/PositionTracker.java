@@ -13,6 +13,7 @@ public class PositionTracker {
 	
 	// Distance between wheels divided by 2
 	double rotationRadius;
+	double gyroOffset;
 	int cyclesPerRev;
 	int currentRevs;
 	double wheelDiameter;
@@ -44,7 +45,7 @@ public class PositionTracker {
 	 */
 	public void resetPosition() {
 		position = new double[3];
-		gyro.reset();
+		gyroOffset = 0;
 	}
 	
 	/**
@@ -56,6 +57,8 @@ public class PositionTracker {
 	 */
 	public void setPosition(double x, double y, double angle) {
 		position = new double[] {x, y, angle};
+		gyroOffset = angle;
+		gyro.reset();
 	}
 	
 	/**
@@ -74,9 +77,9 @@ public class PositionTracker {
 		
 		dLinearPos = (dPos[0] + dPos[1]) / 2;
 		
-		position[2] += Math.toRadians(gyro.getAngle());
-		position[0] += dLinearPos * Math.cos(position[2]);
-		position[1] += dLinearPos * Math.sin(position[2]);
+		position[2] = Math.toRadians(gyro.getAngle()) + gyroOffset;
+		position[0] += dLinearPos * Math.sin(position[2]);
+		position[1] += dLinearPos * Math.cos(position[2]);
 	}
 	
 	private Thread positionThread = new Thread() {

@@ -15,12 +15,10 @@ import edu.wpi.first.wpilibj.VictorSP;
 
 public class Jeff {
 
-	private static final double ANGLE_FACTOR = 2;
 	private static final int BUCKET_ON_RAW_VAL = 1000;
 	private static final int BUCKET_OFF_RAW_VAL = 500;
-	private static final double TURNING_CONSTANT = 1;
-	private static final double MAX_SPEED = 0.2;
-	private static final long GOOD_POSITION_WAIT_TIME = (long) 1e8; //Time to wait once position has been reached
+	
+	private static final double MAX_AUTONOMOUS_SPEED = 0.5;
 
 	/**
 	 * 
@@ -40,12 +38,9 @@ public class Jeff {
 	private PIDVictorSP mLeftDrive, mRightDrive;
 	private VictorSP mNet;
 	private Encoder encLeft, encRight; // Encoders
+	private UpdateDriveThread tUpdateDrive;
 
 	private double maxNetSpeed = 0.2; // Max motor speed for net
-
-	private double[] targetPosition = new double[3];
-
-	private boolean isBusy = false;
 
 	SecondaryJoystickMode secondaryJoyMode = SecondaryJoystickMode.MODE_NET;
 
@@ -53,8 +48,8 @@ public class Jeff {
 
 		VictorSP[] leftMotors = new VictorSP[] { new VictorSP(0), new VictorSP(1) };
 		VictorSP[] rightMotors = new VictorSP[] { new VictorSP(2), new VictorSP(3) };
-		rightMotors[0].setInverted(true);
-		rightMotors[1].setInverted(true);
+
+		actuatorGate = new PWM(6);
 
 		// Define encoders, reverse direction of B
 		encRight = new Encoder(4, 5, false);
@@ -72,12 +67,25 @@ public class Jeff {
 
 		// Create new position tracker using encoders A and B
 		posTracker = new PositionTracker(gyro, encLeft, encRight, 360, 0.1524, 0.703);
-		
-		tSelfDriveThread.start();
+
+		tUpdateDrive = new UpdateDriveThread(posTracker, this);
+		tUpdateDrive.start();
 	}
 
 	public void setSecondaryJoystickMode(SecondaryJoystickMode mode) {
 		secondaryJoyMode = mode;
+	}
+
+	public void stopSelfDrive() {
+		tUpdateDrive.stopSelfDrive();
+	}
+	
+	public void startSelfDrive() {
+		tUpdateDrive.startSelfDrive();
+	}
+	
+	public boolean isSelfDriving() {
+		return tUpdateDrive.isDriving();
 	}
 
 	/**
@@ -101,6 +109,18 @@ public class Jeff {
 		mNet.set(speed * maxNetSpeed);
 	}
 
+	public double getX() {
+		return posTracker.getXPos();
+	}
+
+	public double getY() {
+		return posTracker.getYPos();
+	}
+
+	public double getAngle() {
+		return posTracker.getAngle();
+	}
+
 	/**
 	 * Set maximum that net motor can travel at.
 	 * <p>
@@ -120,131 +140,42 @@ public class Jeff {
 		maxNetSpeed = speed;
 	}
 
-	public boolean isBusy() {
-		return isBusy;
-	}
-
 	public void driveToAngle(double angle) {
-		isBusy = true;
-		targetPosition[2] = angle;
+		tUpdateDrive.setTargetAngle(angle);
+		tUpdateDrive.setIsDriving(true);
 	}
 
 	public void drivetoPosition(double x, double y, double angle) {
-		isBusy = true;
-		targetPosition = new double[] {x, y, angle};
+		tUpdateDrive.setTargetPosition(x, y, angle);
+		tUpdateDrive.setIsDriving(true);
 	}
 
-	/**
-	 * 
-	 * @param a
-	 *            value to be checked
-	 * @param b
-	 *            value to check against
-	 * @param span
-	 *            range that a must be within b
-	 * @return
-	 */
-	private boolean inRange(double a, double b, double span) {
-		return Math.abs(a - b) < span;
+	public double getLeftAngularVel() {
+		return mLeftDrive.getAngularVel();
 	}
 
-	/**
-	 * @return X value that Jeff is traveling to
-	 */
-	public double getTargetX() {
-		return targetPosition[0];
+	public double getRightAngularVel() {
+		return mRightDrive.getAngularVel();
 	}
 
-	/**
-	 * @return Y value that Jeff is traveling to
-	 */
-	public double getTargetY() {
-		return targetPosition[1];
-	}
+	PWM actuatorGate;
 
-	/**
-	 * @return Angle that Jeff is moving to
-	 */
-	public double getTargetAngle() {
-		return targetPosition[2];
-	}
-	
-	public void startSelfDrive() {
-		selfDriveActive = true;
-	}
-	
-	public void stopSelfDrive() {
-		selfDriveActive = false;
-	}
-	
-	//Smallest angle to a
-	private double smallestAngle(double a) {
-		a = a % (2 * Math.PI);
-		return (a <= Math.PI) ? a : (2 * Math.PI - a);
-	}
-
-	long checkGoodDelay = 0;
-	boolean posIsGood = false;
-	
-	private void updateDrive() {
-		
-		// See if robot needs to be doing something
-		// isBusy will be set true when a drive command is run
-		if (!isBusy)
-			return;
-		
-		double heading = posTracker.getAngle();
-		double leftSpeed, rightSpeed;
-
-		// Check to see if robot is where it is supposed to be.
-		if (inRange(posTracker.getXPos(), getTargetX(), 0.05)
-				&& inRange(posTracker.getYPos(), getTargetY(), 0.05)) {
-
-			//Check if angle is correct. If so end, if not turn on the spot.
-			if (Math.abs(smallestAngle(getTargetAngle() - heading)) > 0.02) {
-				if (!posIsGood) {
-					checkGoodDelay = System.nanoTime() + GOOD_POSITION_WAIT_TIME;
-					posIsGood = true;
-				} else if (System.nanoTime() > checkGoodDelay) {
-					isBusy = false;
-				}
-				return;
-			}
-			
-			leftSpeed = getTargetAngle() * TURNING_CONSTANT + 0.1;
-			rightSpeed = -leftSpeed;
-
+	public void toggleGate() {
+		if (actuatorGate.getRaw() > 1750) {
+			actuatorGate.setRaw(1100);
 		} else {
-
-			// Find distance from robot to target position
-			double distX = getTargetX() - posTracker.getXPos();
-			double distY = getTargetY() - posTracker.getYPos();
-
-			// Transform distance to position relative to robot
-			double xPosRel = distX * Math.cos(heading) + distY * Math.sin(heading);
-			double yPosRel = distX * Math.sin(heading) + distY * Math.cos(heading);
-
-			//Determine angle to endpoint (Note: not the same as desired angle once at endpoint)
-			double angleRel = Math.atan(xPosRel / yPosRel);
-
-			// Run at max speed. Robot will turn at full speed
-			// if (shortestAngle * ANGLE_FACTOR) > 1
-			leftSpeed = 1 + smallestAngle(angleRel) * ANGLE_FACTOR;
-			rightSpeed = 1 - smallestAngle(angleRel) * ANGLE_FACTOR;
-
+			actuatorGate.setRaw(2000);
 		}
-		
-		//Get largest absolute motor speed
-		double scale = Math.max(Math.abs(leftSpeed), Math.abs(rightSpeed));
+	}
 
-		//Scale down speeds if largest speed > 1
-		if (scale > 1) {
-			leftSpeed = MAX_SPEED * (leftSpeed / scale);
-			rightSpeed = MAX_SPEED * (rightSpeed / scale);
-		}
-		
-		posIsGood = false;
-		setMotorSpeeds(leftSpeed, rightSpeed, true);
+	private boolean isInverted = false;
+
+	public void toggleInversion() {
+		isInverted = !isInverted;
+	}
+
+	public void setPosition(double x, double y, double angle) {
+		posTracker.setPosition(x, y, angle);
 	}
 
 	/**
@@ -261,11 +192,22 @@ public class Jeff {
 	 * @param usePID
 	 */
 	public void setMotorSpeeds(double left, double right, boolean usePID) {
+		//Get largest absolute motor speed
 		double scale = Math.max(Math.abs(left), Math.abs(right));
 
-		if (scale > 1) {
-			left = left / scale;
-			right = right / scale;
+		double maxSpeed = 1;
+		if (isSelfDriving()) maxSpeed = MAX_AUTONOMOUS_SPEED;
+		
+		//Scale down speeds if largest speed > 1
+		if (scale > maxSpeed) {
+			left = MAX_AUTONOMOUS_SPEED * (left / scale);
+			right = MAX_AUTONOMOUS_SPEED * (right / scale);
+		}
+
+		if (isInverted && !tUpdateDrive.isDriving()) {
+			double oldLeft = left;
+			left = -right;
+			right = -oldLeft;
 		}
 
 		mLeftDrive.setSpeed(left);
@@ -273,31 +215,11 @@ public class Jeff {
 		mRightDrive.setSpeed(right);
 		mRightDrive.setUsePID(usePID);
 	}
-	
+
 	public void setDrivePIDValues(double kP, double kI, double kD, double iDF) {
 		mLeftDrive.setPIDConstants(kP, kI, kD, iDF);
 		mRightDrive.setPIDConstants(kP, kI, kD, iDF);
 	}
-
-	private boolean selfDriveActive = false;
-	
-	// Thread that drives the robot
-	private Thread tSelfDriveThread = new Thread() {
-		@Override
-		public void run() {
-			while (!Thread.interrupted()) {
-				// Set time to wait before starting next iteration
-				long delay = System.nanoTime() + (long) 4e6;
-
-				//Only drive if self drive active
-				if (selfDriveActive)
-					updateDrive();
-
-				// Ensure 4ms has passed before looping
-				while (System.nanoTime() < delay) if (Thread.interrupted()) return;
-			}
-		}
-	};
 
 	/*
 	 * Gear collecting bucket code
@@ -310,8 +232,10 @@ public class Jeff {
 	public void toggleBucket() {
 		/* Enable/disable actuator for bucket */
 		if (bucketFlag == false) {
+			System.out.println("Bucket extending...");
 			actuatorBucket.setRaw(BUCKET_ON_RAW_VAL);
 		} else {
+			System.out.println("Bucket retracting...");
 			actuatorBucket.setRaw(BUCKET_OFF_RAW_VAL);
 		}
 

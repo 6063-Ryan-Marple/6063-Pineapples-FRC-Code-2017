@@ -19,7 +19,7 @@ public class Robot extends IterativeRobot {
 	public EventBus eventBus;
 
 	/* Peripherals */
-	Joystick joy1; // Joystick
+	Joystick joy1, joy2; // Joystick
 	Jeff jeff;
 
 	/**
@@ -31,10 +31,12 @@ public class Robot extends IterativeRobot {
 		jeff = new Jeff();
 
 		joy1 = new Joystick(0);
+		joy2 = new Joystick(1);
 		
 		// Define event bus and register events
 		eventBus = new EventBus();
 		eventBus.registerEvent(new JoystickEvent(joy1));
+		eventBus.registerEvent(new JoystickEvent(joy2));
 		eventBus.addListener(new ButtonListener(jeff));
 
 		System.out.println("robotInit(): Init Complete");
@@ -50,15 +52,20 @@ public class Robot extends IterativeRobot {
 		 * Test autonomous mode should drive to {1, 1} at PI rotation and then back to
 		 * {0, 0} at 0 rotation
 		 */
+		jeff.setPosition(0, 0, 0);
+		
 		jeff.startSelfDrive();
 		
 		jeff.drivetoPosition(1, 1, Math.PI);
 		
-		while(jeff.isBusy() && isAutonomous());
+		while(jeff.isSelfDriving() && isAutonomous()) updateDashboard();
+		
+		long delay = System.nanoTime() + (long) 1e9;
+		while (System.nanoTime() < delay && isAutonomous()) updateDashboard();
 		
 		jeff.drivetoPosition(0, 0, 0);
 		
-		while(jeff.isBusy() && isAutonomous());
+		while(jeff.isSelfDriving() && isAutonomous()) updateDashboard();
 	}
 
 	@Override
@@ -66,10 +73,21 @@ public class Robot extends IterativeRobot {
 
 	}
 	
+	public void updateDashboard() {
+		SmartDashboard.putNumber("X", jeff.getX());
+		SmartDashboard.putNumber("Y", jeff.getY());
+		SmartDashboard.putNumber("Angle", jeff.getAngle());
+	}
+	
 	@Override
 	public void disabledInit() {
 		jeff.stopSelfDrive();
 		jeff.setMotorSpeeds(0, 0, false);
+	}
+	
+	@Override
+	public void disabledPeriodic() {
+		updateDashboard();
 	}
 
 	/*************************************************************************
@@ -80,6 +98,7 @@ public class Robot extends IterativeRobot {
 	public void teleopInit() {
 		jeff.stopSelfDrive();
 		jeff.setMotorSpeeds(0, 0, false);
+		jeff.setMaxNetSpeed(0.3);
 	}
 
 	/**
@@ -89,22 +108,30 @@ public class Robot extends IterativeRobot {
 	@Override
 	public void teleopPeriodic() {
 		//Determine desired motor speeds
+		updateDashboard();
 		double throttle = 0.3 + (0.7 * -(joy1.getThrottle() - 1) / 2);
-		double leftSpeed = throttle * (joy1.getX() / 2 - joy1.getY());
-		double rightSpeed = throttle * (-joy1.getY() - joy1.getX() / 2);
 		
+		double forwardSpeed = Math.pow((-joy1.getY()), 2) * throttle;
+		if (joy1.getY() > 0) forwardSpeed = -forwardSpeed;
+		double leftSpeed = forwardSpeed + (joy1.getX() / 2);
+		double rightSpeed = forwardSpeed - (joy1.getX() / 2);
+		
+		jeff.setNetMotorSpeed(-joy2.getY());
 		jeff.setMotorSpeeds(leftSpeed, rightSpeed, false);
 		
 	}
 
 	@Override
 	public void testInit() {
+		//PWM actuator = new PWM(6);
+		//actuator.setRaw(2000);
 		LiveWindow.setEnabled(false); //Disable LiveWindow, it's annoying
-		SmartDashboard.putNumber("kP", 1);
-		SmartDashboard.putNumber("kI", 0);
-		SmartDashboard.putNumber("kD", 0);
-		SmartDashboard.putNumber("iDF", 0);
-		SmartDashboard.putNumber("TargetSpeed", 0);
+		SmartDashboard.putNumber("kP", SmartDashboard.getNumber("kP", 1));
+		SmartDashboard.putNumber("kI", SmartDashboard.getNumber("kI", 0));
+		SmartDashboard.putNumber("kD", SmartDashboard.getNumber("kD", 0));
+		SmartDashboard.putNumber("iDF", SmartDashboard.getNumber("iDF", 0.95));
+		SmartDashboard.putNumber("Test Mode", SmartDashboard.getNumber("Test Mode", 0));
+		SmartDashboard.putNumber("TargetSpeed", SmartDashboard.getNumber("TargetSpeed", 0));
 	}
 
 	//Variable to define which mode is currently active for testing.
@@ -113,6 +140,8 @@ public class Robot extends IterativeRobot {
 	
 	@Override
 	public void testPeriodic() {
+		double speed;
+		testMode = (int) SmartDashboard.getNumber("Test Mode", 0);
 
 		switch (testMode) {
 		case 0:
@@ -122,11 +151,18 @@ public class Robot extends IterativeRobot {
 			double iDF = SmartDashboard.getNumber("iDF", 1);
 			jeff.setDrivePIDValues(kP, kI, kD, iDF);
 			
-			double speed = SmartDashboard.getNumber("TargetSpeed", 0);
-			jeff.setMotorSpeeds(speed, -speed, true);
+			speed = SmartDashboard.getNumber("TargetSpeed", 0);
+			jeff.setMotorSpeeds(-speed, speed, true);
+			
+			SmartDashboard.putNumber("Left Angular Vel", jeff.getLeftAngularVel());
+			SmartDashboard.putNumber("Right Angular Vel", jeff.getRightAngularVel());
 			break;
 
 		case 1:
+			speed = SmartDashboard.getNumber("TargetSpeed", 0);
+			jeff.setMotorSpeeds(-speed, speed, false);
+			SmartDashboard.putNumber("Left Angular Vel", jeff.getLeftAngularVel());
+			SmartDashboard.putNumber("Right Angular Vel", jeff.getRightAngularVel());
 			break;
 
 		default:

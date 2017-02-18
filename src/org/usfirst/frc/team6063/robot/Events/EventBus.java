@@ -27,7 +27,7 @@ public class EventBus extends Thread {
 	
 	public void addListener(Object l) {
 		listeners.add(l);
-		for (Event e : registeredEvents) {
+		for (Event e : getRegisteredEvents()) {
 			e.addListener(l);
 		}
 	}
@@ -39,10 +39,14 @@ public class EventBus extends Thread {
 		}
 	}
 	
+	synchronized private List<Event> getRegisteredEvents() {
+		return registeredEvents;
+	}
+	
 	@Override
 	public void run() {
 		while (true) {
-			for (Event e : registeredEvents) {
+			for (Event e : getRegisteredEvents()) {
 				while (!eventQueue.offer(e));
 			}
 		}

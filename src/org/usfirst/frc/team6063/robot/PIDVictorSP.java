@@ -1,5 +1,7 @@
 package org.usfirst.frc.team6063.robot;
 
+import java.text.DecimalFormat;
+
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.VictorSP;
 
@@ -16,18 +18,21 @@ public class PIDVictorSP {
 	
 	double targetPower;
 	double targetAngularVel;
-	double lastAngularVel;
+	double targetCurrentAngularVel;
+	double currentAngularVel;
 	double lastEncoderValue;
+	private final static double ACCELERATION = 3;
 	
+	private boolean debug = false;
 	private boolean usePID = true;
 	
 	Encoder enc;
 
 	//Set default values for variables
 	private final double MAX_ANGULAR_VEL = 5; //In revolutions per second
-	private double kP = 1.2;
+	private double kP = 1.0;
 	private double kI = 0.02;
-	private double kD = 2.5;
+	private double kD = 3.0;
 	
 	//Integral dampening factor. Higher means integral lasts for less time.
 	double iDF = 2;
@@ -35,9 +40,14 @@ public class PIDVictorSP {
 	int cpr;
 	
 	public PIDVictorSP(VictorSP[] motors, Encoder encoder, int cyclesPerRevolution) {		
+		this(motors, encoder, cyclesPerRevolution, false);
+	}
+	
+	public PIDVictorSP(VictorSP[] motors, Encoder encoder, int cyclesPerRevolution, boolean debug) {
 		this.motors = motors;
 		this.enc = encoder;
 		this.cpr = cyclesPerRevolution;
+		this.debug = debug;
 		
 		tPIDLoop.start();
 	}
@@ -63,6 +73,10 @@ public class PIDVictorSP {
 		this.iDF = Math.min(iDF, 1);
 	}
 	
+	public double getAngularVel() {
+		return currentAngularVel;
+	}
+	
 	
 	
 	/*
@@ -73,18 +87,35 @@ public class PIDVictorSP {
 	private void updateWheelSpeeds (double dT) {
 		double newPower;
 		
-		if (usePID) {
-			//Calculate angular velocity by dividing change in rotation by deltaT
-			double angularVel = ((enc.get() - lastEncoderValue) / cpr) / dT;
-			lastEncoderValue = enc.get();
-			
+		//Calculate angular velocity by dividing change in rotation by deltaT
+		currentAngularVel = ((enc.get() - lastEncoderValue) / cpr) / dT;
+		lastEncoderValue = enc.get();
+		
+		if (usePID) {			
 			//Calculate error, derivative and integral values
-			double error = targetAngularVel - angularVel;
+			
+			if (targetAngularVel - targetCurrentAngularVel > 0) 
+				targetCurrentAngularVel = Math.min(
+						targetCurrentAngularVel + ACCELERATION * dT, 
+						targetAngularVel);
+			else targetCurrentAngularVel = Math.max(
+					targetCurrentAngularVel - ACCELERATION * dT, 
+					targetAngularVel); 
+			double error = targetCurrentAngularVel - currentAngularVel;
 			double derivative = error - lastError;
 			integral = (1 - iDF * dT) * integral + error * dT;
 			
 			//Calculate power estimated to achieve desired velocity
-			newPower = error * kP + integral * kI + derivative * kD;
+			newPower = motors[0].get() + dT * (error * kP + integral * kI + derivative * kD);
+			
+			if (debug) {
+				DecimalFormat df = new DecimalFormat("#.##");
+				System.out.println(df.format(currentAngularVel) + ", "
+						+ df.format(targetAngularVel) + ", "
+						+ df.format(error) + ", "
+						+ df.format(newPower) + ", "
+						+ dT);
+			}
 			
 		} else {
 			//If not using PID loop, simply set power to target power
@@ -114,8 +145,8 @@ public class PIDVictorSP {
 	 * @param speed
 	 */
 	public void setSpeed(double speed) {
-		targetAngularVel = targetPower * MAX_ANGULAR_VEL;
 		targetPower = speed;
+		targetAngularVel = speed * MAX_ANGULAR_VEL;
 	}
 	
 	private Thread tPIDLoop = new Thread() {
@@ -132,7 +163,7 @@ public class PIDVictorSP {
 				//Calculate change in time
 				dT = (System.nanoTime() - lastTime) / 1e9;
 				lastTime = System.nanoTime();
-				delay = System.nanoTime() + (long) 5e6;
+				delay = System.nanoTime() + (long) 25e6;
 				
 				//Run updateWheelSpeeds loop
 				updateWheelSpeeds(dT);
