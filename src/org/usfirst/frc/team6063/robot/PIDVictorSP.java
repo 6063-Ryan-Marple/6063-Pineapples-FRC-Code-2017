@@ -9,7 +9,7 @@ import edu.wpi.first.wpilibj.VictorSP;
  * TODO: Add code to determine if encoders are working
  * 
  * If encoders aren't working, wheels will be put to full power potentially
- * damaging the robot
+ * damaging the robot or interrupting other robots
  */
 
 public class PIDVictorSP {

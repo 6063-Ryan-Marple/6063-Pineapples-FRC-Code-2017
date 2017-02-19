@@ -98,7 +98,6 @@ public class Robot extends IterativeRobot {
 	public void teleopInit() {
 		jeff.stopSelfDrive();
 		jeff.setMotorSpeeds(0, 0, false);
-		jeff.setMaxNetSpeed(0.3);
 	}
 
 	/**
@@ -116,7 +115,7 @@ public class Robot extends IterativeRobot {
 		double leftSpeed = forwardSpeed + (joy1.getX() / 2);
 		double rightSpeed = forwardSpeed - (joy1.getX() / 2);
 		
-		jeff.setNetMotorSpeed(-joy2.getY());
+		jeff.setSecondaryMotorSpeed(-joy2.getY());
 		jeff.setMotorSpeeds(leftSpeed, rightSpeed, false);
 		
 	}

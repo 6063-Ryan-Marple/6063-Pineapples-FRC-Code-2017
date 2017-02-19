@@ -17,8 +17,12 @@ public class Jeff {
 
 	private static final int BUCKET_ON_RAW_VAL = 1000;
 	private static final int BUCKET_OFF_RAW_VAL = 500;
+	private static final int GATE_UP_RAW_VAL = 2000;
+	private static final int GATE_DOWN_RAW_VAL = 1100;
 	
-	private static final double MAX_AUTONOMOUS_SPEED = 0.5;
+	private static final double MAX_NET_SPEED = 0.2; // Max motor speed for net
+	private static final double MAX_WINCH_SPEED = 1;
+	private static final double MAX_AUTONOMOUS_SPEED = 0.2;
 
 	/**
 	 * 
@@ -31,16 +35,18 @@ public class Jeff {
 	}
 
 	private PWM actuatorBucket; // Actuator for gear bucket
+	private PWM actuatorGate;
 
 	/* Position-tracking objects */
 	private ADXRS450_Gyro gyro;
 	private PositionTracker posTracker;
 	private PIDVictorSP mLeftDrive, mRightDrive;
-	private VictorSP mNet;
+	private VictorSP mNet, mWinch;
 	private Encoder encLeft, encRight; // Encoders
 	private UpdateDriveThread tUpdateDrive;
-
-	private double maxNetSpeed = 0.2; // Max motor speed for net
+	
+	private boolean isGateUp;
+	private boolean isBucketOut;
 
 	SecondaryJoystickMode secondaryJoyMode = SecondaryJoystickMode.MODE_NET;
 
@@ -48,8 +54,12 @@ public class Jeff {
 
 		VictorSP[] leftMotors = new VictorSP[] { new VictorSP(0), new VictorSP(1) };
 		VictorSP[] rightMotors = new VictorSP[] { new VictorSP(2), new VictorSP(3) };
-
+		
+		// Define linear actuators
 		actuatorGate = new PWM(6);
+		actuatorBucket = new PWM(7);
+		
+		if (actuatorGate.getPosition() > 1)
 
 		// Define encoders, reverse direction of B
 		encRight = new Encoder(4, 5, false);
@@ -58,12 +68,10 @@ public class Jeff {
 		mLeftDrive = new PIDVictorSP(leftMotors, encLeft, 360);
 		mRightDrive = new PIDVictorSP(rightMotors, encRight, 360);
 		mNet = new VictorSP(4);
+		mWinch = new VictorSP(8);
 
 		// Init the gyroscope
 		gyro = new ADXRS450_Gyro();
-
-		// Define linear actuators
-		actuatorBucket = new PWM(7);
 
 		// Create new position tracker using encoders A and B
 		posTracker = new PositionTracker(gyro, encLeft, encRight, 360, 0.1524, 0.703);
@@ -103,10 +111,18 @@ public class Jeff {
 	 *            <p>
 	 * @see <i>setMaxNetSpeed(<b>double</b> speed)</i>
 	 */
-	public void setNetMotorSpeed(double speed) {
-		// Make sure speed dow not exceed 1 or -1
-		speed = Math.max(Math.min(speed, 1), -1);
-		mNet.set(speed * maxNetSpeed);
+	public void setSecondaryMotorSpeed(double speed) {
+		// Make sure speed does not exceed 1 or -1
+		speed = Math.max(Math.min(speed, 1), -1) ;
+		switch (secondaryJoyMode) {
+		case MODE_NET:
+			mNet.set(speed * MAX_NET_SPEED);
+			break;
+		case MODE_WINCH:
+			mWinch.set(speed * MAX_WINCH_SPEED);
+			break;
+			
+		}
 	}
 
 	public double getX() {
@@ -119,25 +135,6 @@ public class Jeff {
 
 	public double getAngle() {
 		return posTracker.getAngle();
-	}
-
-	/**
-	 * Set maximum that net motor can travel at.
-	 * <p>
-	 * <ul>
-	 * <i>setMaxNetSpeed(<b>double</b> speed)</i>
-	 * </ul>
-	 * <p>
-	 * When net motor speed is set, the input value is scaled by the max net
-	 * speed set here
-	 * 
-	 * @param speed
-	 *            max net motor speed (between 0 and 1)
-	 *            <p>
-	 * @see <i>setNetMotorSpeed(<b>double</b> speed)</i>
-	 */
-	public void setMaxNetSpeed(double speed) {
-		maxNetSpeed = speed;
 	}
 
 	public void driveToAngle(double angle) {
@@ -156,16 +153,6 @@ public class Jeff {
 
 	public double getRightAngularVel() {
 		return mRightDrive.getAngularVel();
-	}
-
-	PWM actuatorGate;
-
-	public void toggleGate() {
-		if (actuatorGate.getRaw() > 1750) {
-			actuatorGate.setRaw(1100);
-		} else {
-			actuatorGate.setRaw(2000);
-		}
 	}
 
 	private boolean isInverted = false;
@@ -224,23 +211,28 @@ public class Jeff {
 	/*
 	 * Gear collecting bucket code
 	 */
-	private boolean bucketFlag = false;
 
 	/**
 	 * Enable/disable actuator to tilt bucket
 	 */
 	public void toggleBucket() {
 		/* Enable/disable actuator for bucket */
-		if (bucketFlag == false) {
-			System.out.println("Bucket extending...");
-			actuatorBucket.setRaw(BUCKET_ON_RAW_VAL);
-		} else {
-			System.out.println("Bucket retracting...");
+		if (isBucketOut) {
 			actuatorBucket.setRaw(BUCKET_OFF_RAW_VAL);
+		} else {
+			actuatorBucket.setRaw(BUCKET_ON_RAW_VAL);
 		}
 
 		/* Toggle flag */
-		bucketFlag = !bucketFlag;
+		isBucketOut = !isBucketOut;
+	}
+	
+	public void toggleGate() {
+		if (isGateUp) {
+			actuatorGate.setRaw(GATE_DOWN_RAW_VAL);
+		} else {
+			actuatorGate.setRaw(GATE_UP_RAW_VAL);
+		}
 	}
 
 }
