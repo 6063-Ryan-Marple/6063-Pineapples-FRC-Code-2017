@@ -39,6 +39,8 @@ public class Robot extends IterativeRobot {
 		eventBus.registerEvent(new JoystickEvent(joy2));
 		eventBus.addListener(new ButtonListener(jeff));
 
+		new CameraProcessingThread(320, 240, 20);
+		
 		System.out.println("robotInit(): Init Complete");
 	}
 
