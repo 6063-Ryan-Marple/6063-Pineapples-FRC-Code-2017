@@ -230,32 +230,37 @@ public class UpdateDriveThread extends Thread {
 			double linearDistance = Math.sqrt(square(xPosRel) + square(yPosRel));
 			
 			//Determine angle to endpoint (Note: not the same as desired angle once at endpoint)
+			//From 0 to 2PI
 			double angleRel = getAngleFromDistance(xPosRel, yPosRel);
 
 			
 			//Check which direction requires less turning
-			if (angleRel > PI / 2 && angleRel < 2 * PI / 3) {
-				System.out.println("Drive back");
-				//Get smallest angle robot has to turn if it is to travel backwards
-				double smallestAngleRel = -smallestAngle(PI - angleRel);
-				System.out.println(smallestAngleRel);
+			if (angleRel <= PI / 2 && angleRel >= 2 * PI / 3) {
+				
+				//Smallest angle to end point relative to robot (from -PI / 2 to PI / 2)
+				double smallestAngleRel = smallestAngle(angleRel);
+				//If distance to turn is < 0.3 start driving forward, else turn on spot
 				if (Math.abs(smallestAngleRel) > 0.3) {
 					turnOnSpot(smallestAngleRel * STATIONARY_TURNING_KP, MINIMUM_TURN_SPEED);
 					return;
 				} else {
-					leftSpeed = linearDistance * (-1 + smallestAngleRel * DRIVING_TURNING_KP) * 0.5 + MINIMUM_TURN_SPEED;
-					rightSpeed = linearDistance * (-1 - smallestAngleRel * DRIVING_TURNING_KP) * 0.5 + MINIMUM_TURN_SPEED;
+					//Feedback loop here only uses proportional factor, can also include I and D for faster 
+					//and smoother response (requires more tuning than P loop alone)
+					leftSpeed = linearDistance * (1 + smallestAngleRel * DRIVING_TURNING_KP) * DRIVING_KP + MINIMUM_TURN_SPEED;
+					rightSpeed = linearDistance * (1 - smallestAngleRel * DRIVING_TURNING_KP) * DRIVING_KP + MINIMUM_TURN_SPEED;
 				}
 			} else {
-				// Robot will turn at full speed
-				// if (shortestAngle * DRIVING_TURNING_KP) > 1
-				double smallestAngleRel = smallestAngle(angleRel);
+				//Get smallest angle robot has to turn if it is to travel backwards
+				double smallestAngleRel = smallestAngle(angleRel - PI);
+				
+				//If distance to turn is < 0.3 start driving forward, else turn on spot
 				if (Math.abs(smallestAngleRel) > 0.3) {
+					System.out.println("Smallest angle: " + smallestAngleRel);
 					turnOnSpot(smallestAngleRel * STATIONARY_TURNING_KP, MINIMUM_TURN_SPEED);
 					return;
 				} else {
-					leftSpeed = linearDistance * (1 + smallestAngleRel * DRIVING_TURNING_KP) * DRIVING_KP + 0.02;
-					rightSpeed = linearDistance * (1 - smallestAngleRel * DRIVING_TURNING_KP) * DRIVING_KP + 0.02;
+					leftSpeed = linearDistance * (-1 + smallestAngleRel * DRIVING_TURNING_KP) * DRIVING_KP - MINIMUM_TURN_SPEED;
+					rightSpeed = linearDistance * (-1 - smallestAngleRel * DRIVING_TURNING_KP) * DRIVING_KP - MINIMUM_TURN_SPEED;
 				}
 			}
 			
