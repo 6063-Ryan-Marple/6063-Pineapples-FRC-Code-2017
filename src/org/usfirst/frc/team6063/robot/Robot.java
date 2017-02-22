@@ -56,16 +56,22 @@ public class Robot extends IterativeRobot {
 		
 		jeff.startSelfDrive();
 		
-		jeff.drivetoPosition(1, 1, Math.PI);
+		/*jeff.drivetoPosition(1, 1, Math.PI);
 		
 		while(jeff.isSelfDriving() && isAutonomous()) updateDashboard();
 		
 		long delay = System.nanoTime() + (long) 1e9;
 		while (System.nanoTime() < delay && isAutonomous()) updateDashboard();
 		
-		jeff.drivetoPosition(0, 0, 0);
+		jeff.drivetoPosition(0, 0, 0);*/
 		
 		while(jeff.isSelfDriving() && isAutonomous()) updateDashboard();
+		
+		jeff.drivetoPosition(0, 1, Math.PI / 4);
+		
+		while(jeff.isSelfDriving() && isAutonomous()) updateDashboard();
+		
+		jeff.drivetoPosition(0, 0, 0);
 	}
 
 	@Override
@@ -107,6 +113,11 @@ public class Robot extends IterativeRobot {
 	@Override
 	public void teleopPeriodic() {
 		//Determine desired motor speeds
+		double kP = SmartDashboard.getNumber("kP", 0);
+		double kI = SmartDashboard.getNumber("kI", 0);
+		double kD = SmartDashboard.getNumber("kD", 0);
+		double iDF = SmartDashboard.getNumber("iDF", 1);
+		jeff.setDrivePIDValues(kP, kI, kD, iDF);
 		updateDashboard();
 		double throttle = 0.3 + (0.7 * -(joy1.getThrottle() - 1) / 2);
 		

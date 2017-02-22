@@ -5,11 +5,11 @@ public class UpdateDriveThread extends Thread {
 	private static final double PI = Math.PI;
 	
 	//Drive speed = (1 + angle * turn_kp) * drive_kp + minSpeed
-	private static final double DRIVING_TURNING_KP = 2;
+	private static final double DRIVING_TURNING_KP = 0.5;
 	private static final double DRIVING_KP = 0.5;
 	
 	//Turn speed = kP * angle remaining + min turn speed
-	private static final double STATIONARY_TURNING_KP = 0.1;
+	private static final double STATIONARY_TURNING_KP = 0.15;
 	private static final double MINIMUM_TURN_SPEED = 0.02;
 	
 	//Time to wait once position has been reached to ensure it does not overshoot
@@ -45,7 +45,6 @@ public class UpdateDriveThread extends Thread {
 	public UpdateDriveThread(PositionTracker posTracker, Jeff jeff) {
 		this.posTracker = posTracker;
 		this.jeff = jeff;
-		this.start(); //Calls the run() method
 	}
 	
 	@Override
@@ -134,6 +133,7 @@ public class UpdateDriveThread extends Thread {
 		if (turnSpeed < 0) minSpeed = -minSpeed;
 		double left = turnSpeed + minSpeed;
 		double right = -left;
+		System.out.println(left);
 		
 		jeff.setMotorSpeeds(left, right, true);
 	}
@@ -141,7 +141,8 @@ public class UpdateDriveThread extends Thread {
 	//Smallest angle to a
 	private double smallestAngle(double a) {
 		a = a % (2 * PI);
-		return (a <= PI) ? a : (2 * PI - a);
+		if (a < 0) return (a >= -PI) ? a : (a + 2 * PI);
+		else return (a <= PI) ? a : (a - 2 * PI);
 	}
 	
 	/**
@@ -234,9 +235,11 @@ public class UpdateDriveThread extends Thread {
 			
 			//Check which direction requires less turning
 			if (angleRel > PI / 2 && angleRel < 2 * PI / 3) {
+				System.out.println("Drive back");
 				//Get smallest angle robot has to turn if it is to travel backwards
-			double smallestAngleRel = smallestAngle(PI - angleRel);
-				if (smallestAngleRel > 0.5) {
+				double smallestAngleRel = -smallestAngle(PI - angleRel);
+				System.out.println(smallestAngleRel);
+				if (Math.abs(smallestAngleRel) > 0.3) {
 					turnOnSpot(smallestAngleRel * STATIONARY_TURNING_KP, MINIMUM_TURN_SPEED);
 					return;
 				} else {
@@ -247,7 +250,7 @@ public class UpdateDriveThread extends Thread {
 				// Robot will turn at full speed
 				// if (shortestAngle * DRIVING_TURNING_KP) > 1
 				double smallestAngleRel = smallestAngle(angleRel);
-				if (smallestAngleRel > 0.5) {
+				if (Math.abs(smallestAngleRel) > 0.3) {
 					turnOnSpot(smallestAngleRel * STATIONARY_TURNING_KP, MINIMUM_TURN_SPEED);
 					return;
 				} else {

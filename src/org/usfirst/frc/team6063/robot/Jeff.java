@@ -20,9 +20,9 @@ public class Jeff {
 	private static final int GATE_UP_RAW_VAL = 2000;
 	private static final int GATE_DOWN_RAW_VAL = 1100;
 	
-	private static final double MAX_NET_SPEED = 0.2; // Max motor speed for net
+	private static final double MAX_NET_SPEED = 0.5; // Max motor speed for net
 	private static final double MAX_WINCH_SPEED = 1;
-	private static final double MAX_AUTONOMOUS_SPEED = 0.2;
+	private static final double MAX_AUTONOMOUS_SPEED = 1;
 
 	/**
 	 * 
@@ -58,8 +58,6 @@ public class Jeff {
 		// Define linear actuators
 		actuatorGate = new PWM(6);
 		actuatorBucket = new PWM(7);
-		
-		if (actuatorGate.getPosition() > 1)
 
 		// Define encoders, reverse direction of B
 		encRight = new Encoder(4, 5, false);
@@ -233,6 +231,8 @@ public class Jeff {
 		} else {
 			actuatorGate.setRaw(GATE_UP_RAW_VAL);
 		}
+		
+		isGateUp = !isGateUp;
 	}
 
 }

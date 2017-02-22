@@ -30,12 +30,12 @@ public class PIDVictorSP {
 
 	//Set default values for variables
 	private final double MAX_ANGULAR_VEL = 5; //In revolutions per second
-	private double kP = 1.0;
-	private double kI = 0.02;
-	private double kD = 3.0;
+	private double kP = 4.0;
+	private double kI = 0.5;
+	private double kD = 4.0;
 	
 	//Integral dampening factor. Higher means integral lasts for less time.
-	double iDF = 2;
+	double iDF = 1;
 	
 	int cpr;
 	
