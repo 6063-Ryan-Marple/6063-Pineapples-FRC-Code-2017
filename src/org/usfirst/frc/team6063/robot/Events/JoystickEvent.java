@@ -12,7 +12,7 @@ public class JoystickEvent extends Event {
 		
 		joystick = joyInstance;
 		lastButtonState = new boolean[joystick.getButtonCount()];
-
+		
 	}
 	
 	public int getButtonID() {
@@ -20,8 +20,7 @@ public class JoystickEvent extends Event {
 	}
 	
 	public int getJoyID() {
-		//TODO finish
-		return 0;
+		return joystick.getPort();
 	}
 
 	@Override
